@@ -73,52 +73,6 @@ class ScriptArguments:
     sanity_check: Optional[bool] = field(default=True, metadata={"help": "only train on 1000 samples"})
 
 
-def extract_anthropic_prompt(prompt_and_response):
-    """Extract the anthropic prompt from a prompt and response pair."""
-    search_term = "\n\nAssistant:"
-    search_term_idx = prompt_and_response.rfind(search_term)
-
-    if search_term_idx == -1:
-        raise ValueError(f"Prompt and response does not contain '{search_term}'")
-
-    return prompt_and_response[: search_term_idx + len(search_term)]
-
-
-def get_hh(split: str, sanity_check: bool = False, silent: bool = False, cache_dir: str = None) -> Dataset:
-    """Load the Anthropic Helpful-Harmless dataset from Hugging Face and convert it to the necessary format.
-
-    The dataset is converted to a dictionary with the following structure:
-    {
-        'prompt': List[str],
-        'completion': List[str],
-        'label': List[bool],
-    }
-
-    Prompts should be structured as follows:
-      \n\nHuman: <prompt>\n\nAssistant:
-    Multiple turns are allowed, but the prompt should always start with \n\nHuman: and end with \n\nAssistant:.
-    """
-    dataset = load_dataset("Anthropic/hh-rlhf", split=split, cache_dir=cache_dir)
-    if sanity_check:
-        dataset = dataset.select(range(min(len(dataset), 1000)))
-
-    flat_data = {
-        "prompt": [],
-        "completion": [],
-        "label": [],
-    }
-    for sample in dataset:
-        prompt = extract_anthropic_prompt(sample["chosen"])
-        flat_data["prompt"].append(prompt)
-        flat_data["completion"].append(sample["chosen"][len(prompt) :])
-        flat_data["label"].append(True)
-        flat_data["prompt"].append(prompt)
-        flat_data["completion"].append(sample["rejected"][len(prompt) :])
-        flat_data["label"].append(False)
-
-    return dataset.from_dict(flat_data)
-
-
 if __name__ == "__main__":
     parser = HfArgumentParser((ScriptArguments, KTOConfig, ModelConfig))
     script_args, kto_args, model_args = parser.parse_args_into_dataclasses()
@@ -132,11 +86,15 @@ if __name__ == "__main__":
         tokenizer.pad_token = tokenizer.eos_token
 
     # 2. Load the Anthropic Helpful-Harmless dataset
-    train_dataset = get_hh("train", sanity_check=script_args.sanity_check)
+    repo_id = "argilla/ultrafeedback-binarized-preferences-cleaned-kto"
 
-    # 3. Load evaluation dataset
-    eval_dataset = get_hh("test", sanity_check=script_args.sanity_check)
+    dataset = load_dataset(repo_id, split="train")
 
+    dataset = dataset.train_test_split(test_size=0.2, shuffle=True)
+    
+    train_dataset = dataset["train"]
+    eval_dataset = dataset["test"]
+    
     # 4. initialize the KTO trainer
     kto_trainer = KTOTrainer(
         model,
