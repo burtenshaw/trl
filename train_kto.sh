@@ -1,8 +1,14 @@
+# if a python env named venv does not exist, make one
+
+# pip install .
+# pip install accelerate wandb 
+# pip install -U peft
+
 python examples/scripts/kto.py \
     --model_name_or_path=microsoft/phi-2 \
-    --per_device_train_batch_size 4 \
+    --per_device_train_batch_size 8 \
     --max_steps 1000 \
-    --learning_rate 1e-3 \
+    --learning_rate 3e-5 \
     --gradient_accumulation_steps 1 \
     --logging_steps 10 \
     --eval_steps 500 \

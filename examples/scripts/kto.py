@@ -56,56 +56,60 @@ python examples/scripts/kto.py \
 from dataclasses import dataclass, field
 from typing import Optional
 
-from datasets import Dataset, load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer, HfArgumentParser
+# from datasets import Dataset, load_dataset
+# from transformers import AutoModelForCausalLM, AutoTokenizer, HfArgumentParser
+# import wandb
 
-from trl import KTOConfig, KTOTrainer, ModelConfig, get_peft_config
+# from trl import KTOConfig, KTOTrainer, ModelConfig, get_peft_config
 
-
-# Define and parse arguments.
-@dataclass
-class ScriptArguments:
-    """
-    The arguments for the KTO training script.
-    """
-
-    # debugging
-    sanity_check: Optional[bool] = field(default=True, metadata={"help": "only train on 1000 samples"})
+# wandb.init(
+#     project="kto",
+# )
 
 
-if __name__ == "__main__":
-    parser = HfArgumentParser((ScriptArguments, KTOConfig, ModelConfig))
-    script_args, kto_args, model_args = parser.parse_args_into_dataclasses()
+# # Define and parse arguments.
+# @dataclass
+# class ScriptArguments:
+#     """
+#     The arguments for the KTO training script.
+#     """
 
-    # 1. load a pretrained model
-    model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
-    model_ref = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
+#     # debugging
+#     sanity_check: Optional[bool] = field(default=True, metadata={"help": "only train on 1000 samples"})
 
-    tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
 
-    # 2. Load the Anthropic Helpful-Harmless dataset
-    repo_id = "argilla/ultrafeedback-binarized-preferences-cleaned-kto"
-
-    dataset = load_dataset(repo_id, split="train")
-
-    dataset = dataset.train_test_split(test_size=0.2, shuffle=True)
+# if __name__ == "__main__":
+#     parser = HfArgumentParser((ScriptArguments, KTOConfig, ModelConfig))
+#     script_args, kto_args, model_args = parser.parse_args_into_dataclasses()
+#     # kto_args.desirable_weight = 0.22
+#     # kto_args.generate_during_eval = True
     
-    train_dataset = dataset["train"]
-    eval_dataset = dataset["test"]
-    
-    # 4. initialize the KTO trainer
-    kto_trainer = KTOTrainer(
-        model,
-        model_ref,
-        args=kto_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
-        peft_config=get_peft_config(model_args),
-    )
+#     # 1. load a pretrained model
+#     model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
+#     model_ref = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
 
-    # 5. train and save the model
-    kto_trainer.train()
-    kto_trainer.save_model(kto_args.output_dir)
+#     tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
+#     if tokenizer.pad_token is None:
+#         tokenizer.pad_token = tokenizer.eos_token
+
+#     # 2. Load the dataset
+#     repo_id = "argilla/ultrafeedback-binarized-preferences-cleaned-kto"
+#     dataset = load_dataset(repo_id, split="train")
+#     dataset = dataset.train_test_split(test_size=0.2, shuffle=True)
+#     train_dataset = dataset["train"]
+#     eval_dataset = dataset["test"]
+    
+#     # 4. initialize the KTO trainer
+#     kto_trainer = KTOTrainer(
+#         model=model,
+#         ref_model=model_ref,
+#         args=kto_args,
+#         train_dataset=train_dataset,
+#         eval_dataset=eval_dataset,
+#         tokenizer=tokenizer,
+#         peft_config=get_peft_config(model_args),
+#     )
+
+#     # 5. train and save the model
+#     kto_trainer.train()
+#     kto_trainer.save_model(kto_args.output_dir)
